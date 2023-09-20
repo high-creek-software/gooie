@@ -4,9 +4,16 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/driver/desktop"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
+
+const (
+	defaultImgWidth     = 40
+	defaultImgHeight    = 40
+	defaultImagePadding = 5
+)
+
+type ToggleOpt = func(s *Toggle) error
 
 type Toggle struct {
 	widget.DisableableWidget
@@ -14,6 +21,9 @@ type Toggle struct {
 	Checked bool
 
 	OnChanged func(bool)
+
+	imgWidth, imgHeight float32
+	padding             float32
 }
 
 func (t *Toggle) Cursor() desktop.Cursor {
@@ -39,16 +49,23 @@ func (t *Toggle) Disable() {
 
 func (t *Toggle) CreateRenderer() fyne.WidgetRenderer {
 	img := canvas.NewImageFromResource(offResource)
-	img.Resize(fyne.NewSize(40, 20))
+	img.Resize(fyne.NewSize(t.imgWidth, t.imgHeight))
 	img.ScaleMode = canvas.ImageScaleSmooth
 	img.FillMode = canvas.ImageFillOriginal
 	return &toggleRenderer{toggle: t, img: img}
 }
 
-func NewToggle(changed func(bool)) *Toggle {
+func NewToggle(changed func(bool), opts ...ToggleOpt) *Toggle {
 	t := &Toggle{
 		DisableableWidget: widget.DisableableWidget{},
 		OnChanged:         changed,
+		imgWidth:          defaultImgWidth,
+		imgHeight:         defaultImgHeight,
+		padding:           defaultImagePadding,
+	}
+
+	for _, opt := range opts {
+		opt(t)
 	}
 
 	t.ExtendBaseWidget(t)
@@ -67,15 +84,15 @@ func (tr *toggleRenderer) Destroy() {
 }
 
 func (tr *toggleRenderer) Layout(size fyne.Size) {
-	imgSize := tr.img.MinSize()
-	pos := fyne.NewPos(theme.Padding(), theme.Padding())
+	imgSize := fyne.NewSize(tr.toggle.imgWidth, tr.toggle.imgHeight)
+	pos := fyne.NewPos(size.Width/2-imgSize.Width/2, size.Height/2-imgSize.Height/2)
 
 	tr.img.Move(pos)
 	tr.img.Resize(imgSize)
 }
 
 func (tr *toggleRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(40, 20)
+	return fyne.NewSize(tr.toggle.imgWidth+tr.toggle.padding, tr.toggle.imgHeight+tr.toggle.padding)
 }
 
 func (tr *toggleRenderer) Objects() []fyne.CanvasObject {
@@ -91,4 +108,25 @@ func (tr *toggleRenderer) Refresh() {
 		tr.img.Resource = offResource
 	}
 	tr.img.Refresh()
+}
+
+func SetImageWidth(width float32) ToggleOpt {
+	return func(t *Toggle) error {
+		t.imgWidth = width
+		return nil
+	}
+}
+
+func SetImageHeight(height float32) ToggleOpt {
+	return func(t *Toggle) error {
+		t.imgHeight = height
+		return nil
+	}
+}
+
+func SetImagePadding(padding float32) ToggleOpt {
+	return func(t *Toggle) error {
+		t.padding = padding
+		return nil
+	}
 }
